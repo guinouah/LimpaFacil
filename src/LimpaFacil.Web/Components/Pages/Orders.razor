@@ -1,0 +1,29 @@
+@page "/pedidos"
+<PageTitle>Pedidos - LimpaFácil</PageTitle>
+<h1>Pedidos</h1>
+@if (!Api.IsLoggedIn) { <div class="notice">Entre no painel para continuar.</div> }
+else
+{
+    <div class="toolbar"><select @bind="filter"><option value="">Todos</option>@foreach (var s in Enum.GetValues<OrderStatus>()) { <option value="@s">@s.ToPtBr()</option> }</select><button @onclick="Load">Filtrar</button></div>
+    @foreach (var order in orders)
+    {
+        <article class="card order"><div><span class="eyebrow">@order.Number</span><h2>@order.ClientName</h2><p>@order.CreatedAt.LocalDateTime.ToString("g") · @order.Total.ToString("C")</p></div>
+            <div><span class="pill">@order.Status.ToPtBr()</span>
+                @if (Allowed(order.Status).Any()) { <select @bind="next[order.Id]">@foreach (var s in Allowed(order.Status)) { <option value="@s">@s.ToPtBr()</option> }</select><button @onclick="() => Advance(order)">Atualizar</button> }
+                @if (order.Status == OrderStatus.ReadyForPickup) { <label class="check"><InputCheckbox @bind-Value="paymentConfirmed[order.Id]" /> Pagamento presencial recebido</label> }
+                @if (order.PaymentConfirmed) { <small>Pagamento confirmado na retirada</small> }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(order.Observation)) { <p>Observação: @order.Observation</p> }
+            <details><summary>Itens e histórico</summary>@foreach (var item in order.Items) { <p>@item.Quantity × @item.ProductName — @item.Subtotal.ToString("C")</p> }@foreach (var h in order.History) { <small>@h.CreatedAt.LocalDateTime.ToString("g") · @h.NewStatus.ToPtBr() · @h.AuthorName</small> }</details>
+        </article>
+    }
+    @if (!string.IsNullOrEmpty(message)) { <p class="notice">@message</p> }
+}
+
+@code {
+    private List<OrderDto> orders = []; private Dictionary<Guid, OrderStatus> next = []; private Dictionary<Guid, bool> paymentConfirmed = []; private string filter = ""; private string? message;
+    protected override async Task OnInitializedAsync() { if (Api.IsLoggedIn) await Load(); }
+    private async Task Load() { try { OrderStatus? status = Enum.TryParse<OrderStatus>(filter, out var parsed) ? parsed : null; orders = (await Api.GetOrdersAsync(status))?.Items.ToList() ?? []; next = orders.ToDictionary(x => x.Id, x => Allowed(x.Status).FirstOrDefault(x.Status)); paymentConfirmed = orders.ToDictionary(x => x.Id, x => false); } catch (Exception ex) { message = ex.Message; } }
+    private async Task Advance(OrderDto order) { try { if (next[order.Id] == OrderStatus.Completed && !paymentConfirmed[order.Id]) { message = "Confirme o recebimento do pagamento antes de concluir a retirada."; return; } await Api.ChangeOrderStatusAsync(order.Id, new(next[order.Id], order.Version, null, next[order.Id] == OrderStatus.Completed)); message = null; await Load(); } catch (Exception ex) { message = ex.Message; } }
+    private static IEnumerable<OrderStatus> Allowed(OrderStatus s) => s switch { OrderStatus.Received => [OrderStatus.InSeparation, OrderStatus.Cancelled], OrderStatus.InSeparation => [OrderStatus.ReadyForPickup, OrderStatus.Cancelled], OrderStatus.ReadyForPickup => [OrderStatus.Completed], _ => [] };
+}

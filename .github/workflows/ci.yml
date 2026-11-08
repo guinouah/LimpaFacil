@@ -1,0 +1,49 @@
+name: Build e testes
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-password
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-only-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    env:
+      LIMPAFACIL_TEST_MYSQL: Server=127.0.0.1;Port=3306;User=root;Password=ci-only-password;SslMode=None;AllowPublicKeyRetrieval=True
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build src/LimpaFacil.Api -m:1
+      - run: dotnet build src/LimpaFacil.Web -m:1
+      - run: dotnet test tests/LimpaFacil.UnitTests -m:1 --logger trx --results-directory TestResults/unit
+      - run: dotnet test tests/LimpaFacil.IntegrationTests -m:1 --logger trx --results-directory TestResults/mysql
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultados-testes
+          path: TestResults
+  mobile:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet workload install maui
+      - run: dotnet build src/LimpaFacil.Mobile -f net10.0-windows10.0.19041.0 -m:1
+      - run: dotnet build src/LimpaFacil.Mobile -f net10.0-android -m:1

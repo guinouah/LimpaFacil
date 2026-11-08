@@ -1,0 +1,99 @@
+@page "/cadastro"
+<PageTitle>Cadastro de cliente - LimpaFácil</PageTitle>
+
+<section class="registration">
+    <span class="eyebrow">CONTA DE CLIENTE</span>
+    <h1>Crie sua conta</h1>
+    <p>Cadastre-se para montar seus pedidos no aplicativo e retirar na loja.</p>
+
+    @if (registeredName is not null)
+    {
+        <div class="card" role="status">
+            <h2>Conta criada, @registeredName!</h2>
+            <p>Entre no aplicativo LimpaFácil com seu e-mail e senha para comprar e acompanhar os pedidos.</p>
+            <p>O painel web é destinado aos funcionários e administradores.</p>
+            <a href="/">Voltar ao início</a>
+        </div>
+    }
+    else
+    {
+        <EditForm Model="model" OnValidSubmit="Register" FormName="customer-registration" class="card form">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <fieldset disabled="@busy">
+                <label for="customer-type">Tipo de cliente
+                    <InputSelect id="customer-type" @bind-Value="model.CustomerType">
+                        <option value="@CustomerType.Individual">Pessoa física</option>
+                        <option value="@CustomerType.Company">Pessoa jurídica</option>
+                    </InputSelect>
+                </label>
+                <label for="customer-name">@(model.CustomerType == CustomerType.Company ? "Razão social" : "Nome completo")
+                    <InputText id="customer-name" @bind-Value="model.Name" autocomplete="name" maxlength="120" />
+                </label>
+                <label for="customer-document">@(model.CustomerType == CustomerType.Company ? "CNPJ" : "CPF")
+                    <InputText id="customer-document" @bind-Value="model.TaxId" inputmode="numeric" maxlength="18" />
+                </label>
+                <label for="customer-email">E-mail
+                    <InputText id="customer-email" @bind-Value="model.Email" type="email" autocomplete="email" maxlength="180" />
+                </label>
+                <label for="customer-password">Senha (mínimo 10 caracteres)
+                    <InputText id="customer-password" @bind-Value="model.Password" type="password" autocomplete="new-password" />
+                </label>
+                <label for="customer-confirm-password">Confirmar senha
+                    <InputText id="customer-confirm-password" @bind-Value="model.ConfirmPassword" type="password" autocomplete="new-password" />
+                </label>
+                <button type="submit">@(busy ? "Criando conta..." : "Criar minha conta")</button>
+            </fieldset>
+            @if (!string.IsNullOrWhiteSpace(message)) { <p class="error" role="alert">@message</p> }
+            <a href="/">Já tenho conta / voltar ao painel</a>
+        </EditForm>
+        <p class="registration-note">Para trabalhar na loja, solicite ao administrador o cadastro de funcionário.</p>
+    }
+</section>
+
+@code {
+    private RegistrationModel model = new();
+    private string? message;
+    private string? registeredName;
+    private bool busy;
+
+    private async Task Register()
+    {
+        if (busy) return;
+        busy = true;
+        message = null;
+        try
+        {
+            var document = new string(model.TaxId.Where(char.IsDigit).ToArray());
+            var expected = model.CustomerType == CustomerType.Company ? 14 : 11;
+            if (document.Length != expected)
+            {
+                message = $"Informe um {(expected == 14 ? "CNPJ com 14" : "CPF com 11")} números.";
+                return;
+            }
+            var customer = await Api.RegisterCustomerAsync(new RegisterRequest(model.Name.Trim(), model.Email.Trim(),
+                model.Password, model.CustomerType, document));
+            registeredName = customer.Name;
+            model = new();
+        }
+        catch (HttpRequestException) { message = "Não foi possível conectar à loja. Tente novamente em instantes."; }
+        catch (TaskCanceledException) { message = "A loja demorou para responder. Tente novamente."; }
+        catch (Exception ex) { message = ex.Message; }
+        finally { busy = false; }
+    }
+
+    private sealed class RegistrationModel
+    {
+        public CustomerType CustomerType { get; set; } = CustomerType.Individual;
+        [Required(ErrorMessage = "Informe seu nome ou razão social."), StringLength(120, MinimumLength = 2, ErrorMessage = "O nome deve ter entre 2 e 120 caracteres.")]
+        public string Name { get; set; } = "";
+        [Required(ErrorMessage = "Informe o CPF ou CNPJ.")]
+        public string TaxId { get; set; } = "";
+        [Required(ErrorMessage = "Informe o e-mail."), EmailAddress(ErrorMessage = "Informe um e-mail válido.")]
+        public string Email { get; set; } = "";
+        [Required(ErrorMessage = "Informe a senha."), MinLength(10, ErrorMessage = "A senha deve ter pelo menos 10 caracteres.")]
+        public string Password { get; set; } = "";
+        [Required(ErrorMessage = "Confirme a senha."), Compare(nameof(Password), ErrorMessage = "As senhas não conferem.")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

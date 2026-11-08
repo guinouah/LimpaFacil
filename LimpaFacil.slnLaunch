@@ -1,0 +1,21 @@
+[
+  {
+    "Name": "API + Windows Machine",
+    "Projects": [
+      {
+        "Path": "src\\LimpaFacil.Api\\LimpaFacil.Api.csproj",
+        "DebugTarget": "http",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\LimpaFacil.Web\\LimpaFacil.Web.csproj",
+        "DebugTarget": "http",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\LimpaFacil.Mobile\\LimpaFacil.Mobile.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

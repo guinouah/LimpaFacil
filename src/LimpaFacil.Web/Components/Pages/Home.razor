@@ -1,0 +1,31 @@
+@page "/"
+<PageTitle>LimpaFácil - Painel</PageTitle>
+
+<section class="hero">
+    <div><span class="eyebrow">PAINEL DA LOJA</span><h1>Operação simples,<br />estoque sob controle.</h1><p>Gerencie o catálogo e acompanhe cada retirada.</p></div>
+    <div class="card login">
+        @if (!Api.IsLoggedIn)
+        {
+            <h2>Entrar</h2>
+            <form @onsubmit="Login" @onsubmit:preventDefault>
+                <label>E-mail<input @bind="email" type="email" autocomplete="username" required /></label>
+                <label>Senha<input @bind="password" type="password" autocomplete="current-password" required /></label>
+                <button type="submit" disabled="@busy">@(busy ? "Entrando..." : "Acessar painel")</button>
+            </form>
+            <a class="signup-link" href="/cadastro">Criar conta de cliente</a>
+            @if (!string.IsNullOrEmpty(message)) { <p class="error">@message</p> }
+        }
+        else
+        {
+            <h2>Olá, @Api.User!.Name</h2><p>Perfil: @(Api.User.Role == UserRole.Administrator ? "Administrador" : "Funcionário")</p>
+            <a href="/catalogo">Gerenciar catálogo</a>
+            <button class="secondary" @onclick="Logout">Sair</button>
+        }
+    </div>
+</section>
+
+@code {
+    private string email = ""; private string password = ""; private string? message; private bool busy;
+    private async Task Login() { if (busy) return; try { busy = true; message = null; await Api.LoginAsync(email, password); password = ""; } catch (Exception ex) { message = ex is HttpRequestException ? "Não foi possível conectar à loja. Confirme que a API está iniciada." : ex.Message; } finally { busy = false; } }
+    private void Logout() => Api.Logout();
+}

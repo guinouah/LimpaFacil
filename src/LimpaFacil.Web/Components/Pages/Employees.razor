@@ -1,0 +1,31 @@
+@page "/funcionarios"
+<PageTitle>Funcionários - LimpaFácil</PageTitle>
+<h1>Funcionários</h1>
+@if (!Api.IsLoggedIn) { <div class="notice">Entre no painel para continuar.</div> }
+else if (Api.User!.Role != UserRole.Administrator) { <div class="notice">Área restrita ao administrador.</div> }
+else
+{
+    <EditForm Model="model" OnValidSubmit="Save" class="card form">
+        <DataAnnotationsValidator /><ValidationSummary />
+        <label>Nome<InputText @bind-Value="model.Name" /></label><label>E-mail<InputText @bind-Value="model.Email" type="email" /></label>
+        <label>Senha inicial<InputText @bind-Value="model.Password" type="password" /></label><label>Perfil<InputSelect @bind-Value="model.Role"><option value="@UserRole.Employee">Funcionário</option><option value="@UserRole.Administrator">Administrador</option></InputSelect></label>
+        <button>Criar usuário</button>
+    </EditForm>
+    <section class="card"><h2>Equipe</h2>
+        @foreach (var employee in employees)
+        {
+            <div class="row"><span><b>@employee.Name</b><small>@employee.Email · @(employee.IsActive ? "Ativo" : "Inativo")</small></span>
+                <button class="secondary" disabled="@(employee.Id == Api.User.Id)" @onclick="() => Toggle(employee)">@(employee.IsActive ? "Desativar" : "Ativar")</button></div>
+        }
+    </section>
+    @if (!string.IsNullOrEmpty(message)) { <p class="notice">@message</p> }
+}
+@code {
+    private EmployeeModel model = new(); private string? message;
+    private List<EmployeeDto> employees = [];
+    protected override async Task OnInitializedAsync() { if (Api.User?.Role == UserRole.Administrator) await Load(); }
+    private async Task Load() { try { employees = await Api.GetEmployeesAsync() ?? []; } catch (Exception ex) { message = ex.Message; } }
+    private async Task Toggle(EmployeeDto employee) { try { await Api.SetEmployeeActiveAsync(employee.Id, !employee.IsActive); await Load(); } catch (Exception ex) { message = ex.Message; } }
+    private async Task Save() { try { var user = await Api.CreateEmployeeAsync(new(model.Name, model.Email, model.Password, model.Role)); message = $"Usuário {user.Name} criado."; model = new(); await Load(); } catch (Exception ex) { message = ex.Message; } }
+    private sealed class EmployeeModel { [Required] public string Name { get; set; } = ""; [Required, EmailAddress] public string Email { get; set; } = ""; [Required, MinLength(10)] public string Password { get; set; } = ""; public UserRole Role { get; set; } = UserRole.Employee; }
+}
