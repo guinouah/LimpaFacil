@@ -58,7 +58,7 @@ public sealed class AdminController(AppDbContext db, CurrentUser current, OrderS
         ValidateProduct(request);
         var entity = await db.Products.Include(x => x.Category).SingleOrDefaultAsync(x => x.Id == id, ct);
         if (entity is null) return NotFound();
-        if (request.ExpectedVersion != entity.Version) throw new ConcurrencyException();
+        if (request.ExpectedVersion.HasValue && request.ExpectedVersion.Value != entity.Version) throw new ConcurrencyException();
         if (!await db.Categories.AnyAsync(x => x.Id == request.CategoryId, ct)) return ValidationProblem("Categoria inexistente.");
         var sku = request.Sku.Trim().ToUpperInvariant();
         if (await db.Products.AnyAsync(x => x.Id != id && x.Sku == sku, ct)) return Conflict(new ApiError("duplicate_sku", "O SKU já está cadastrado."));

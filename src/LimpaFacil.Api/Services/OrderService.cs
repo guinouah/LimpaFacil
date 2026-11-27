@@ -66,7 +66,7 @@ public sealed class OrderService(AppDbContext db)
         var order = new Order
         {
             ClientId = clientId,
-            Number = $"LF{DateTime.UtcNow:yyyyMMddHHmmss}{Random.Shared.Next(1000, 9999)}",
+            Number = $"LF{DateTime.UtcNow:yyyyMMddHHmmss}{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}",
             IdempotencyKey = request.IdempotencyKey,
             Observation = string.IsNullOrWhiteSpace(request.Observation) ? null : request.Observation.Trim(),
             Status = OrderStatus.Received
