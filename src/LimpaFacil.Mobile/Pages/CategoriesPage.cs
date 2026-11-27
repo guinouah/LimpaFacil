@@ -12,6 +12,7 @@ public sealed class CategoriesPage : ContentPage
         BindingContext = viewModel;
         Title = "Categorias";
         BackgroundColor = Theme.Background;
+        ToolbarItems.Add(BoundUi.Toolbar("Carrinho", nameof(CategoriesViewModel.OpenCartCommand)));
         ToolbarItems.Add(BoundUi.Toolbar("Sair", nameof(CategoriesViewModel.LogoutCommand)));
         var heading = new VerticalStackLayout
         {

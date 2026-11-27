@@ -9,7 +9,7 @@ else
     {
         <EditForm Model="categoryEdit" OnValidSubmit="SaveCategory" class="card form"><DataAnnotationsValidator /><ValidationSummary /><h2>Categoria</h2>
             <label>Nome<InputText @bind-Value="categoryEdit.Name" /></label><label>Descrição<InputText @bind-Value="categoryEdit.Description" /></label>
-            <label class="check"><InputCheckbox @bind-Value="categoryEdit.IsActive" /> Ativa</label><button>Salvar</button>
+            <label class="check"><InputCheckbox @bind-Value="categoryEdit.IsActive" /> Ativa</label><button>Salvar</button><button type="button" class="secondary" @onclick="() => categoryEdit = null">Cancelar</button>
         </EditForm>
     }
     @if (productEdit is not null)
@@ -21,7 +21,7 @@ else
             <label>Descrição<InputTextArea @bind-Value="productEdit.Description" /></label>
             <label>Orientações de uso<InputTextArea @bind-Value="productEdit.UsageInstructions" /></label>
             <label>Imagem (URL opcional)<InputText @bind-Value="productEdit.ImageUrl" /></label>
-            <label>Preço<InputNumber @bind-Value="productEdit.Price" /></label><label class="check"><InputCheckbox @bind-Value="productEdit.IsActive" /> Ativo</label><button>Salvar</button>
+            <label>Preço<InputNumber @bind-Value="productEdit.Price" /></label><label class="check"><InputCheckbox @bind-Value="productEdit.IsActive" /> Ativo</label><button>Salvar</button><button type="button" class="secondary" @onclick="() => productEdit = null">Cancelar</button>
         </EditForm>
     }
     <div class="grid">
@@ -30,7 +30,7 @@ else
     </div>
     @if (stockProduct is not null)
     {
-        <div class="card form"><h2>Ajustar estoque: @stockProduct.Name</h2><label>Quantidade (+/-)<InputNumber @bind-Value="stockQuantity" /></label><label>Motivo<input @bind="stockReason" /></label><button @onclick="SaveStock">Registrar ajuste</button></div>
+        <div class="card form"><h2>Ajustar estoque: @stockProduct.Name</h2><label>Quantidade (+/-)<InputNumber @bind-Value="stockQuantity" /></label><label>Motivo<input @bind="stockReason" /></label><button @onclick="SaveStock">Registrar ajuste</button><button type="button" class="secondary" @onclick="() => stockProduct = null">Cancelar</button></div>
     }
     @if (!string.IsNullOrEmpty(message)) { <p class="notice">@message</p> }
 }
@@ -40,13 +40,13 @@ else
     private ProductDto? stockProduct; private int stockQuantity; private string stockReason = ""; private string? message;
     protected override async Task OnInitializedAsync() { if (Api.IsLoggedIn) await Load(); }
     private async Task Load() { try { categories = await Api.GetCategoriesAsync() ?? []; products = await Api.GetProductsAsync() ?? []; } catch (Exception ex) { message = ex.Message; } }
-    private void NewCategory() => categoryEdit = new();
-    private void EditCategory(CategoryDto c) => categoryEdit = new() { Id = c.Id, Name = c.Name, Description = c.Description, IsActive = c.IsActive };
+    private void NewCategory() { productEdit = null; stockProduct = null; categoryEdit = new(); }
+    private void EditCategory(CategoryDto c) { productEdit = null; stockProduct = null; categoryEdit = new() { Id = c.Id, Name = c.Name, Description = c.Description, IsActive = c.IsActive }; }
     private async Task SaveCategory() { try { await Api.SaveCategoryAsync(categoryEdit!.Id, new(categoryEdit.Name, categoryEdit.Description, categoryEdit.IsActive)); categoryEdit = null; await Load(); } catch (Exception ex) { message = ex.Message; } }
-    private void NewProduct() { if (categories.Count > 0) productEdit = new() { CategoryId = categories[0].Id }; }
-    private void EditProduct(ProductDto p) => productEdit = new() { Id = p.Id, CategoryId = p.CategoryId, Sku = p.Sku, Name = p.Name, Brand = p.Brand, Presentation = p.Presentation, Description = p.Description, UsageInstructions = p.UsageInstructions, ImageUrl = p.ImageUrl, Price = p.Price, IsActive = p.IsActive, Version = p.Version };
+    private void NewProduct() { if (categories.Count > 0) { categoryEdit = null; stockProduct = null; productEdit = new() { CategoryId = categories[0].Id }; } }
+    private void EditProduct(ProductDto p) { categoryEdit = null; stockProduct = null; productEdit = new() { Id = p.Id, CategoryId = p.CategoryId, Sku = p.Sku, Name = p.Name, Brand = p.Brand, Presentation = p.Presentation, Description = p.Description, UsageInstructions = p.UsageInstructions, ImageUrl = p.ImageUrl, Price = p.Price, IsActive = p.IsActive, Version = p.Version }; }
     private async Task SaveProduct() { try { var x = productEdit!; await Api.SaveProductAsync(x.Id, new(x.CategoryId, x.Sku, x.Name, x.Description, x.Brand, x.Presentation, x.UsageInstructions, x.Price, x.ImageUrl, x.IsActive, x.Version)); productEdit = null; await Load(); } catch (Exception ex) { message = ex.Message; } }
-    private void SelectStock(ProductDto p) { if (Api.User?.Role != UserRole.Administrator) { message = "Ajustes de estoque são exclusivos do administrador."; return; } stockProduct = p; stockQuantity = 0; stockReason = ""; }
+    private void SelectStock(ProductDto p) { if (Api.User?.Role != UserRole.Administrator) { message = "Ajustes de estoque são exclusivos do administrador."; return; } categoryEdit = null; productEdit = null; stockProduct = p; stockQuantity = 0; stockReason = ""; }
     private async Task SaveStock() { try { await Api.AdjustStockAsync(stockProduct!.Id, new(stockQuantity, stockReason, stockProduct.Version)); stockProduct = null; await Load(); } catch (Exception ex) { message = ex.Message; } }
     private sealed class CategoryModel { public Guid? Id { get; set; } [Required] public string Name { get; set; } = ""; public string? Description { get; set; } public bool IsActive { get; set; } = true; }
     private sealed class ProductModel { public Guid? Id { get; set; } public Guid CategoryId { get; set; } [Required] public string Sku { get; set; } = ""; [Required] public string Name { get; set; } = ""; [Required] public string Brand { get; set; } = ""; [Required] public string Presentation { get; set; } = ""; public string? Description { get; set; } public string? UsageInstructions { get; set; } public string? ImageUrl { get; set; } [Range(typeof(decimal), "0.01", "9999999999")] public decimal Price { get; set; } = 1; public bool IsActive { get; set; } = true; public long? Version { get; set; } }

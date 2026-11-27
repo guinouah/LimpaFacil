@@ -23,9 +23,11 @@ public sealed class CategoriesViewModel : BaseViewModel
     public ObservableCollection<CategoryItemViewModel> Categories { get; } = [];
     public AsyncCommand LoadCommand { get; }
     public AsyncCommand LogoutCommand { get; }
+    public AsyncCommand OpenCartCommand { get; }
     public CategoriesViewModel(IShopApi api, LocalStore store, IAppNavigation navigation)
     {
         LogoutCommand = Command(navigation.LogoutAsync);
+        OpenCartCommand = Command(navigation.OpenCartAsync);
         LoadCommand = Command(async () =>
         {
             List<CategoryDto> categories;
