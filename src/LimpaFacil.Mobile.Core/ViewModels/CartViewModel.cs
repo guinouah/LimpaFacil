@@ -45,12 +45,21 @@ public sealed class CartViewModel : BaseViewModel
             if (cart.Count == 0) throw new InvalidOperationException("O carrinho está vazio.");
             Message = "Enviando pedido...";
             var key = await store.GetCheckoutKeyAsync(id, cart);
-            var order = await api.CheckoutAsync(new CheckoutRequest(key,
-                cart.Select(x => new CheckoutItemRequest(Guid.Parse(x.ProductId), x.Quantity, x.UnitPrice)).ToArray(), Observation.Trim()));
-            await store.ClearCartAsync(id);
-            Observation = "";
-            await LoadAsync();
-            Message = $"✓ Pedido {order.Number} registrado com sucesso.";
+            try
+            {
+                var order = await api.CheckoutAsync(new CheckoutRequest(key,
+                    cart.Select(x => new CheckoutItemRequest(Guid.Parse(x.ProductId), x.Quantity, x.UnitPrice)).ToArray(), Observation.Trim()));
+                await store.ClearCartAsync(id);
+                Observation = "";
+                await LoadAsync();
+                Message = $"✓ Pedido {order.Number} registrado com sucesso.";
+            }
+            catch (PriceChangedException)
+            {
+                try { var fresh = await api.GetProductsAsync(); await store.RefreshCartPricesAsync(id, fresh); await LoadAsync(); }
+                catch { /* mantém carrinho atual */ }
+                Message = "O preço de um produto mudou. Os valores foram atualizados; confirme o pedido novamente.";
+            }
         }, () => Items.Count > 0);
     }
     private async Task LoadAsync()

@@ -79,6 +79,21 @@ public sealed class LocalStore : IAsyncDisposable
     }
     public async Task ClearCartAsync(Guid userId) { var conn = await Db(); await conn.ExecuteAsync("DELETE FROM cart_rows WHERE UserId = ?", userId.ToString()); await conn.ExecuteAsync("DELETE FROM checkout_attempts WHERE UserId = ?", userId.ToString()); }
     public Task ClearPrivateAsync(Guid userId) => ClearCartAsync(userId);
+    public async Task RefreshCartPricesAsync(Guid userId, IEnumerable<ProductDto> products)
+    {
+        var conn = await Db();
+        var priceMap = products.ToDictionary(x => x.Id.ToString(), x => x.Price);
+        var rows = await GetCartAsync(userId);
+        foreach (var row in rows)
+        {
+            if (priceMap.TryGetValue(row.ProductId, out var price))
+            {
+                row.UnitPrice = price;
+                await conn.UpdateAsync(row);
+            }
+        }
+        await conn.ExecuteAsync("DELETE FROM checkout_attempts WHERE UserId = ?", userId.ToString());
+    }
     public async ValueTask DisposeAsync()
     {
         if (db is not null) { await db.CloseAsync(); db = null; }

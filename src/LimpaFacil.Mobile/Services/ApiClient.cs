@@ -94,6 +94,8 @@ public sealed class ApiClient(HttpClient http, TokenStore tokens) : IShopApi
         try
         {
             var error = await response.Content.ReadFromJsonAsync<ApiError>();
+            if (error?.Code == "price_changed")
+                throw new PriceChangedException(error.Message ?? "O preço de um produto mudou. Atualize e confirme novamente.");
             throw new InvalidOperationException(error?.Message ?? "Falha na comunicação com a loja.");
         }
         catch (System.Text.Json.JsonException)

@@ -3,6 +3,8 @@ using LimpaFacil.Domain;
 
 namespace LimpaFacil.Mobile.Services;
 
+public sealed class PriceChangedException(string message) : Exception(message);
+
 public interface IShopApi
 {
     Task<AuthResponse> LoginAsync(string email, string password);
