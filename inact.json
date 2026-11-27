@@ -1,9 +1,0 @@
-{
-    "categoryId":  "c0a899a7-fb9e-49cc-b1c9-be27bd09c9fe",
-    "name":  "Inactive Prod",
-    "sku":  "INACT-001",
-    "presentation":  "1",
-    "price":  5,
-    "brand":  "B",
-    "isActive":  false
-}
